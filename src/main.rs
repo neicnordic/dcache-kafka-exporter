@@ -17,7 +17,8 @@ fn start_prometheus_exporter() {
 #[derive(Parser)]
 struct Args {
 
-    #[arg(long, default_values_t = ["localhost:9092".to_string()])]
+    #[arg(long, value_delimiter = ',',
+          default_values_t = ["localhost:9092".to_string()])]
     kafka_hosts: Vec<String>,
 
     #[arg(long = "kafka-ca", value_name = "PEM-FILE")]
