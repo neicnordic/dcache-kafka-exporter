@@ -2,7 +2,7 @@ use std::str;
 use clap::Parser;
 use std::error::Error;
 use kafka::client::{KafkaClient, SecurityConfig};
-use kafka::consumer::Consumer;
+use kafka::consumer::{Consumer, FetchOffset};
 use openssl::ssl;
 
 mod billing;
