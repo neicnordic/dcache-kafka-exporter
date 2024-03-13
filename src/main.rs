@@ -9,11 +9,6 @@ use openssl::ssl;
 mod billing;
 mod collector;
 
-fn start_prometheus_exporter() {
-    let binding = "127.0.0.1:19997".parse().unwrap();
-    prometheus_exporter::start(binding).unwrap();
-}
-
 #[derive(Parser)]
 struct Args {
 
@@ -35,6 +30,9 @@ struct Args {
 
     #[arg(long, default_value = "prometheus-billing-exporter")]
     kafka_group: String,
+
+    #[arg(long, default_value = "127.0.0.1:19997")]
+    listen: String,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -62,7 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .with_offset_storage(Some(GroupOffsetStorage::Kafka))
         .create()?;
     let mut collector = collector::Collector::new();
-    start_prometheus_exporter();
+    let _exporter = prometheus_exporter::start(args.listen.parse().unwrap());
     loop {
         for msgs in kafka_consumer.poll().unwrap().iter() {
             for msg in msgs.messages() {
