@@ -2,9 +2,8 @@ use std::str;
 use clap::Parser;
 use std::error::Error;
 use kafka::client::{KafkaClient, SecurityConfig};
-use kafka::consumer::{Consumer, FetchOffset, GroupOffsetStorage};
+use kafka::consumer::Consumer;
 use openssl::ssl;
-//use prometheus_exporter;
 
 mod billing;
 mod collector;
@@ -55,8 +54,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         kafka_client.load_metadata_all().unwrap();
     let mut kafka_consumer = Consumer::from_client(kafka_client)
         .with_topic(args.kafka_topic)
-        .with_group(args.kafka_group)
-        .with_offset_storage(None)
         .with_fallback_offset(FetchOffset::Latest)
         .create()?;
     let mut collector = collector::Collector::new();
