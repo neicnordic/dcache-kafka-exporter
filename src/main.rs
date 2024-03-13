@@ -55,9 +55,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         kafka_client.load_metadata_all().unwrap();
     let mut kafka_consumer = Consumer::from_client(kafka_client)
         .with_topic(args.kafka_topic)
-        .with_fallback_offset(FetchOffset::Earliest)
         .with_group(args.kafka_group)
-        .with_offset_storage(Some(GroupOffsetStorage::Kafka))
+        .with_offset_storage(None)
+        .with_fallback_offset(FetchOffset::Latest)
         .create()?;
     let mut collector = collector::Collector::new();
     let _exporter = prometheus_exporter::start(args.listen.parse().unwrap());
