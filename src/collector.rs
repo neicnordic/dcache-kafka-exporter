@@ -32,8 +32,8 @@ impl MetricIndex for (Cell, Status) {
 
 const NONTRANSFER_LABELS : &[&str; 4] =
     &["cell_name", "cell_domain", "cell_type", "status_code"];
-const TRANSFER_LABELS : &[&str; 5] =
-    &["cell_name", "cell_domain", "cell_type", "is_p2p", "is_write"];
+const TRANSFER_LABELS : &[&str; 4] =
+    &["cell_name", "cell_domain", "cell_type", "direction"];
 
 impl Collector {
     pub fn new() -> Collector {
@@ -79,10 +79,10 @@ impl Collector {
             Message::Store {cell, status, ..} => {
                 MetricIndex::project(&self.store_count, &(cell, status)).inc();
             }
-            Message::Transfer {cell, is_p2p, is_write, transfer_size, ..} => {
+            Message::Transfer {cell, direction, transfer_size, ..} => {
                 let vs = [
                     &cell.name[..], &cell.domain[..], &cell.type_[..],
-                    &is_p2p.to_string()[..], &is_write[..],
+                    &direction.to_string(),
                 ];
                 self.transfer_count.with_label_values(&vs).inc();
                 self.transferred_bytes.with_label_values(&vs).inc_by(transfer_size);
