@@ -191,11 +191,11 @@ pub enum Message {
 
     #[serde(rename_all = "camelCase")]
     Store {
-	billing_path: String,
+        billing_path: String,
         #[serde(flatten)]
         cell: Cell,
-	date: String, // FIXME
-	file_size: i64,
+        date: String, // FIXME
+        file_size: i64,
         hsm: Hsm,
         locations: Vec<String>,
         status: Status,
@@ -209,20 +209,20 @@ pub enum Message {
 
     #[serde(rename_all = "camelCase")]
     Transfer {
-	billing_path: String,
+        billing_path: String,
         #[serde(flatten)]
         cell: Cell,
-	date: String, // FIXME
-	file_size: i64,
-	initiator: String,
-    #[serde(flatten)]
-    direction: Direction,
-	local_endpoint: Option<String>,
-	mean_read_bandwidth: Option<f64>,
-	pnfsid: String,
+        date: String, // FIXME
+        file_size: i64,
+        initiator: String,
+        #[serde(flatten)]
+        direction: Direction,
+        local_endpoint: Option<String>,
+        mean_read_bandwidth: Option<f64>,
+        pnfsid: String,
         protocol_info: ProtocolInfo,
-	queuing_time: i64,
-	read_active: Option<String>,
+        queuing_time: i64,
+        read_active: Option<String>,
         session: String,
         transfer_time: i32,
         storage_info: String,
