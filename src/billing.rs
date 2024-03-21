@@ -141,7 +141,7 @@ pub enum Message {
         queuing_time: i32,
         session: String,
         status: Status,
-        storage_info: Option<String>,
+        storage_info: Option<String>, // present for pools, absent for doors
         subject: Vec<String>,
         transaction: Option<String>,
     },
@@ -165,7 +165,7 @@ pub enum Message {
         session: String,
         session_duration: i32,
         status: Status,
-        storage_info: String,
+        storage_info: Option<String>, // may be missing when status.code != 0
         subject: Vec<String>,
         transfer_path: String,
     },
