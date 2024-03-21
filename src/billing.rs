@@ -204,7 +204,7 @@ pub enum Message {
         session: String,
         storage_info: String,
         pnfsid: String,
-        trasaction: String,
+        transaction: String,
     },
 
     #[serde(rename_all = "camelCase")]
