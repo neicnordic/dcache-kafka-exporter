@@ -36,6 +36,7 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
+    env_logger::init();
 
     let mut builder = ssl::SslConnector::builder(ssl::SslMethod::tls_client())?;
     if let Some(p) = args.cert_path {

@@ -1,3 +1,4 @@
+use log::{error, warn};
 use prometheus_exporter::{
     prometheus::core::{MetricVec, MetricVecBuilder},
     prometheus::{
@@ -107,33 +108,35 @@ impl Collector {
     }
 
     pub fn process_message(&mut self, msg_str: &str) {
-        let msg : Message = serde_json::from_str(msg_str).unwrap_or_else(|error| {
-            panic!("Failed to parse JSON record %{:?}: %{:?}", msg_str, error)
-        });
+        let msg = serde_json::from_str(msg_str);
         match msg {
-            Message::Remove {cell, status, storage_info, ..} => {
+            Ok(Message::Remove {cell, status, storage_info, ..}) => {
                 let index = (cell, status, storage_info);
                 MetricIndex::project(&self.remove_count, &index).inc();
             }
-            Message::Request {cell, status, storage_info, ..} => {
+            Ok(Message::Request {cell, status, storage_info, ..}) => {
                 let index = (cell, status, storage_info);
                 MetricIndex::project(&self.request_count, &index).inc();
             }
-            Message::Restore {cell, status, storage_info, hsm, ..} => {
+            Ok(Message::Restore {cell, status, storage_info, hsm, ..}) => {
                 let index = (cell, status, storage_info, hsm);
                 MetricIndex::project(&self.restore_count, &index).inc();
             }
-            Message::Store {cell, status, storage_info, hsm, ..} => {
+            Ok(Message::Store {cell, status, storage_info, hsm, ..}) => {
                 let index = (cell, status, storage_info, hsm);
                 MetricIndex::project(&self.store_count, &index).inc();
             }
-            Message::Transfer {cell, direction, storage_info, transfer_size, ..} => {
+            Ok(Message::Transfer {cell, direction, storage_info, transfer_size, ..}) => {
                 let index = (cell, direction, storage_info);
                 MetricIndex::project(&self.transfer_count, &index).inc();
                 MetricIndex::project(&self.transferred_bytes, &index).inc_by(transfer_size);
             }
-            Message::Unparsed => {
-                println!("Unrecognized billing record {:?}", msg_str);
+            Ok(Message::Unparsed) => {
+                warn!("Unrecognized billing record {:?}", msg_str);
+                self.unparsed_count.inc();
+            }
+            Err(error) => {
+                error!("Failed to parse JSON record {:?}: {:?}", msg_str, error);
                 self.unparsed_count.inc();
             }
         }
