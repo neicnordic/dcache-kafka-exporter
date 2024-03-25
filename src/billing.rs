@@ -160,7 +160,7 @@ pub enum Message {
         mapped_uid: i32,
         mover_info: Option<MoverInfo>,
         owner: Option<String>,
-        pnfsid: String,
+        pnfsid: Option<String>,
         queuing_time: i32,
         session: String,
         session_duration: i32,
