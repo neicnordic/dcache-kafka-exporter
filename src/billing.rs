@@ -68,10 +68,10 @@ impl<'de> Deserialize<'de> for Direction {
 #[serde(rename_all = "camelCase")]
 pub struct ProtocolInfo {
     pub host: String,
-    pub port: i32,
+    pub port: u32,
     pub protocol: String, // FIXME
-    pub version_major: i32,
-    pub version_minor: i32,
+    pub version_major: u32,
+    pub version_minor: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -84,7 +84,7 @@ pub struct Hsm {
 
 #[derive(Debug, Deserialize)]
 pub struct Status {
-    pub code: i32,
+    pub code: u32,
     pub msg: String,
 }
 
@@ -112,14 +112,14 @@ pub enum MoverInfo {
         local_endpoint: String,
         mean_read_bandwidth: Option<f64>,
         protocol_info: ProtocolInfo,
-        queuing_time: i32,
+        queuing_time: u64,
         read_active: Option<String>,
         read_idle: Option<String>,
         session: String,
         status: Status,
         transfer_path: String,
         transfer_size: u64,
-        transfer_time: i32,
+        transfer_time: u64,
         version: String,
     },
 
@@ -136,9 +136,9 @@ pub enum Message {
         billing_path: String,
         #[serde(flatten)]
         cell: Cell,
-        file_size: i64,
+        file_size: u64,
         pnfsid: String,
-        queuing_time: i32,
+        queuing_time: u64,
         session: String,
         status: Status,
         storage_info: Option<String>, // present for pools, absent for doors
@@ -153,17 +153,17 @@ pub enum Message {
         cell: Cell,
         client: String,
         client_chain: String,
-        file_size: i64,
+        file_size: u64,
         #[serde(rename = "mappedGID")]
-        mapped_gid: i32,
+        mapped_gid: u32,
         #[serde(rename = "mappedUID")]
-        mapped_uid: i32,
+        mapped_uid: u32,
         mover_info: Option<MoverInfo>,
         owner: Option<String>,
         pnfsid: Option<String>,
-        queuing_time: i32,
+        queuing_time: u64,
         session: String,
-        session_duration: i32,
+        session_duration: u64,
         status: Status,
         storage_info: Option<String>, // may be missing when status.code != 0
         subject: Vec<String>,
@@ -176,16 +176,16 @@ pub enum Message {
         #[serde(flatten)]
         cell: Cell,
         date: String,
-        file_size: i64,
+        file_size: u64,
         hsm: Hsm,
         locations: Vec<String>,
         pnfsid: String,
-        queuing_time: i32,
+        queuing_time: u64,
         session: String,
         status: Status,
         storage_info: String,
         transaction: String,
-        transfer_time: i32,
+        transfer_time: u64,
         version: String,
     },
 
@@ -195,12 +195,12 @@ pub enum Message {
         #[serde(flatten)]
         cell: Cell,
         date: String, // FIXME
-        file_size: i64,
+        file_size: u64,
         hsm: Hsm,
         locations: Vec<String>,
         status: Status,
-        queuing_time: i32,
-        transfer_time: i32,
+        queuing_time: u64,
+        transfer_time: u64,
         session: String,
         storage_info: String,
         pnfsid: String,
@@ -213,7 +213,7 @@ pub enum Message {
         #[serde(flatten)]
         cell: Cell,
         date: String, // FIXME
-        file_size: i64,
+        file_size: u64,
         initiator: String,
         #[serde(flatten)]
         direction: Direction,
@@ -221,10 +221,10 @@ pub enum Message {
         mean_read_bandwidth: Option<f64>,
         pnfsid: String,
         protocol_info: ProtocolInfo,
-        queuing_time: i64,
+        queuing_time: u64,
         read_active: Option<String>,
         session: String,
-        transfer_time: i32,
+        transfer_time: u64,
         storage_info: String,
         transfer_size: u64,
         transfer_path: String,
