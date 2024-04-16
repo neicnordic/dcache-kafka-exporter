@@ -9,13 +9,15 @@ use crate::billing::*;
 
 pub struct Collector {
     remove_count: IntCounterVec,
+    remove_bytes: IntCounterVec,
     request_count: IntCounterVec,
     restore_count: IntCounterVec,
+    restore_bytes: IntCounterVec,
     store_count: IntCounterVec,
+    store_bytes: IntCounterVec,
     transfer_count: IntCounterVec,
+    transfer_bytes: IntCounterVec,
     unparsed_count: IntCounter,
-
-    transferred_bytes: IntCounterVec,
 }
 
 pub trait MetricIndex {
@@ -84,52 +86,78 @@ impl Collector {
     pub fn new() -> Collector {
         Collector {
             remove_count: register_int_counter_vec!(
-                "billing_remove_count", "The number of remove events seen.",
+                "billing_remove_count",
+                "The number of remove events seen.",
                 REMOVE_REQUEST_LABELS).unwrap(),
+            remove_bytes: register_int_counter_vec!(
+                "billing_remove_bytes",
+                "The accumulated size of removed files.",
+                REMOVE_REQUEST_LABELS).unwrap(),
+
             request_count: register_int_counter_vec!(
-                "billing_request_count", "The number of request events seen.",
+                "billing_request_count",
+                "The number of request events seen.",
                 REMOVE_REQUEST_LABELS).unwrap(),
+
             restore_count: register_int_counter_vec!(
-                "billing_restore_count", "The number of restore events seen.",
+                "billing_restore_count",
+                "The number of restore events seen.",
                 RESTORE_STORE_LABELS).unwrap(),
+            restore_bytes: register_int_counter_vec!(
+                "billing_restore_bytes",
+                "The accumulated size of files attempted restored from tape.",
+                RESTORE_STORE_LABELS).unwrap(),
+
             store_count: register_int_counter_vec!(
-                "billing_store_count", "The number of store events seen.",
+                "billing_store_count",
+                "The number of store events seen.",
                 RESTORE_STORE_LABELS).unwrap(),
+            store_bytes: register_int_counter_vec!(
+                "billing_store_bytes",
+                "The accumulated size of files attempted flushed to tape.",
+                RESTORE_STORE_LABELS).unwrap(),
+
             transfer_count: register_int_counter_vec!(
-                "billing_transfer_count", "The number of transfer events seen.",
+                "billing_transfer_count",
+                "The number of transfer events seen.",
                 TRANSFER_LABELS).unwrap(),
+            transfer_bytes: register_int_counter_vec!(
+                "billing_transfer_bytes",
+                "The number of bytes transferred, including from failed transfers.",
+                TRANSFER_LABELS).unwrap(),
+
             unparsed_count: register_int_counter!(
-                "billing_unparsed_count", "The number of unparsed events.")
-                .unwrap(),
-            transferred_bytes: register_int_counter_vec!(
-                "billing_transferred_bytes", "Bytes transferred.",
-                TRANSFER_LABELS).unwrap(),
+                "billing_unparsed_count",
+                "The number of unparsed events.").unwrap(),
         }
     }
 
     pub fn process_message(&mut self, msg_str: &str) {
         let msg = serde_json::from_str(msg_str);
         match msg {
-            Ok(Message::Remove {cell, status, storage_info, ..}) => {
+            Ok(Message::Remove {cell, status, storage_info, file_size, ..}) => {
                 let index = (cell, status, storage_info);
                 MetricIndex::project(&self.remove_count, &index).inc();
+                MetricIndex::project(&self.remove_bytes, &index).inc_by(file_size);
             }
             Ok(Message::Request {cell, status, storage_info, ..}) => {
                 let index = (cell, status, storage_info);
                 MetricIndex::project(&self.request_count, &index).inc();
             }
-            Ok(Message::Restore {cell, status, storage_info, hsm, ..}) => {
+            Ok(Message::Restore {cell, status, storage_info, hsm, file_size, ..}) => {
                 let index = (cell, status, storage_info, hsm);
                 MetricIndex::project(&self.restore_count, &index).inc();
+                MetricIndex::project(&self.restore_bytes, &index).inc_by(file_size);
             }
-            Ok(Message::Store {cell, status, storage_info, hsm, ..}) => {
+            Ok(Message::Store {cell, status, storage_info, hsm, file_size, ..}) => {
                 let index = (cell, status, storage_info, hsm);
                 MetricIndex::project(&self.store_count, &index).inc();
+                MetricIndex::project(&self.store_bytes, &index).inc_by(file_size);
             }
             Ok(Message::Transfer {cell, direction, storage_info, transfer_size, ..}) => {
                 let index = (cell, direction, storage_info);
                 MetricIndex::project(&self.transfer_count, &index).inc();
-                MetricIndex::project(&self.transferred_bytes, &index).inc_by(transfer_size);
+                MetricIndex::project(&self.transfer_bytes, &index).inc_by(transfer_size);
             }
             Ok(Message::Unparsed) => {
                 warn!("Unrecognized billing record {:?}", msg_str);
