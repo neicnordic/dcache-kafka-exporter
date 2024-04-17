@@ -1,4 +1,4 @@
-use log::{error, warn};
+use log::{warn};
 use prometheus_exporter::{
     prometheus::core::{MetricVec, MetricVecBuilder},
     prometheus::{
@@ -25,64 +25,59 @@ pub struct Collector {
     unparsed_count: IntCounter,
 }
 
-pub trait MetricIndex {
-    fn project<T : MetricVecBuilder>(vec: &MetricVec<T>, index: &Self) -> T::M;
-}
-
-// Remove and Request
+// For Message::Remove and Message::Request
 const REMOVE_REQUEST_LABELS : &[&str; 5] = &[
     "cell_name", "cell_domain", "cell_type",
     "status_code",
     "storage_info",
 ];
-impl MetricIndex for (Cell, Status, Option<String>) {
-    fn project<T : MetricVecBuilder>(vec: &MetricVec<T>, index: &Self) -> T::M {
-        let (cell, status, storage_info) = index;
-        let storage_info: &str = match storage_info {
-            None => { "" }
-            Some(s) => { s.as_str() }
-        };
-        vec.with_label_values(&[
-            cell.name.as_str(), cell.domain.as_str(), cell.type_.as_str(),
-            status.code.to_string().as_str(),
-            storage_info,
-        ])
-    }
-}
 
-// Restore and Store
+// For Message::Restore and Message::Store
 const RESTORE_STORE_LABELS : &[&str; 8] = &[
     "cell_name", "cell_domain", "cell_type",
     "status_code",
     "storage_info",
     "hsm_instance", "hsm_provider", "hsm_type",
 ];
-impl MetricIndex for (Cell, Status, String, Hsm) {
-    fn project<T : MetricVecBuilder>(vec: &MetricVec<T>, index: &Self) -> T::M {
-        let (cell, status, storage_info, hsm) = index;
-        vec.with_label_values(&[
-            cell.name.as_str(), cell.domain.as_str(), cell.type_.as_str(),
-            status.code.to_string().as_str(),
-            storage_info.as_str(),
-            hsm.instance.as_str(), hsm.provider.as_str(), hsm.type_.as_str(),
-        ])
-    }
-}
 
-// Transfer
+// For Message::Transfer
 const TRANSFER_LABELS : &[&str; 5] = &[
     "cell_name", "cell_domain", "cell_type",
     "direction",
     "storage_info",
 ];
-impl MetricIndex for (Cell, Direction, String) {
-    fn project<T : MetricVecBuilder>(vec: &MetricVec<T>, index: &Self) -> T::M {
-        let (cell, direction, storage_info) = index;
-        vec.with_label_values(&[
-            &cell.name[..], &cell.domain[..], &cell.type_[..],
-            &direction.to_string(),
-            storage_info.as_str(),
-        ])
+
+// Value projections corresponding to the above labels.
+fn proj<T : MetricVecBuilder>(vec: &MetricVec<T>, index: &Message) -> T::M {
+    match index {
+        Message::Remove {cell, status, storage_info, ..} |
+        Message::Request {cell, status, storage_info, ..} => {
+            let storage_info: &str = match storage_info {
+                None => { "" }
+                Some(s) => { s.as_str() }
+            };
+            vec.with_label_values(&[
+                cell.name.as_str(), cell.domain.as_str(), cell.type_.as_str(),
+                status.code.to_string().as_str(),
+                storage_info,
+            ])
+        }
+        Message::Restore {cell, status, storage_info, hsm, ..} |
+        Message::Store {cell, status, storage_info, hsm, ..} => {
+            vec.with_label_values(&[
+                cell.name.as_str(), cell.domain.as_str(), cell.type_.as_str(),
+                status.code.to_string().as_str(),
+                storage_info.as_str(),
+                hsm.instance.as_str(), hsm.provider.as_str(), hsm.type_.as_str(),
+            ])
+        }
+        Message::Transfer {cell, direction, storage_info, ..} => {
+            vec.with_label_values(&[
+                &cell.name[..], &cell.domain[..], &cell.type_[..],
+                &direction.to_string(),
+                storage_info.as_str(),
+            ])
+        }
     }
 }
 
@@ -169,43 +164,40 @@ impl Collector {
         }
     }
 
-    pub fn process_message(&mut self, msg_str: &str) {
-        let msg = serde_json::from_str(msg_str);
+    fn update_metrics(&mut self, msg: Message) {
         match msg {
-            Ok(Message::Remove {cell, status, storage_info, file_size, ..}) => {
-                let index = (cell, status, storage_info);
-                MetricIndex::project(&self.remove_count, &index).inc();
-                MetricIndex::project(&self.remove_bytes, &index).inc_by(file_size);
+            Message::Remove {file_size, ..} => {
+                proj(&self.remove_count, &msg).inc();
+                proj(&self.remove_bytes, &msg).inc_by(file_size);
             }
-            Ok(Message::Request {cell, status, storage_info, ..}) => {
-                let index = (cell, status, storage_info);
-                MetricIndex::project(&self.request_count, &index).inc();
+            Message::Request {..} => {
+                proj(&self.request_count, &msg).inc();
             }
-            Ok(Message::Restore {cell, status, storage_info, hsm, file_size, transfer_time, ..}) => {
-                let index = (cell, status, storage_info, hsm);
-                MetricIndex::project(&self.restore_count, &index).inc();
-                MetricIndex::project(&self.restore_bytes, &index).inc_by(file_size);
-                MetricIndex::project(&self.restore_seconds, &index).observe(transfer_time as f64 / 1000.0);
+            Message::Restore {file_size, transfer_time, ..} => {
+                proj(&self.restore_count, &msg).inc();
+                proj(&self.restore_bytes, &msg).inc_by(file_size);
+                proj(&self.restore_seconds, &msg).observe(transfer_time as f64 / 1000.0);
             }
-            Ok(Message::Store {cell, status, storage_info, hsm, file_size, transfer_time, ..}) => {
-                let index = (cell, status, storage_info, hsm);
-                MetricIndex::project(&self.store_count, &index).inc();
-                MetricIndex::project(&self.store_bytes, &index).inc_by(file_size);
-                MetricIndex::project(&self.store_seconds, &index).observe(transfer_time as f64 / 1000.0);
+            Message::Store {file_size, transfer_time, ..} => {
+                proj(&self.store_count, &msg).inc();
+                proj(&self.store_bytes, &msg).inc_by(file_size);
+                proj(&self.store_seconds, &msg).observe(transfer_time as f64 / 1000.0);
             }
-            Ok(Message::Transfer {cell, direction, storage_info, transfer_size, transfer_time, ..}) => {
-                let index = (cell, direction, storage_info);
-                MetricIndex::project(&self.transfer_count, &index).inc();
-                MetricIndex::project(&self.transfer_bytes, &index).inc_by(transfer_size);
-                MetricIndex::project(&self.transfer_seconds, &index)
-                    .observe(transfer_time as f64 / 1000.0);
+            Message::Transfer {transfer_size, transfer_time, ..} => {
+                proj(&self.transfer_count, &msg).inc();
+                proj(&self.transfer_bytes, &msg).inc_by(transfer_size);
+                proj(&self.transfer_seconds, &msg).observe(transfer_time as f64 / 1000.0);
             }
-            Ok(Message::Unparsed) => {
-                warn!("Unrecognized billing record {:?}", msg_str);
-                self.unparsed_count.inc();
+        }
+    }
+
+    pub fn process_message(&mut self, msg_str: &str) {
+        match serde_json::from_str(msg_str) {
+            Ok(msg) => {
+                self.update_metrics(msg);
             }
             Err(error) => {
-                error!("Failed to parse JSON record {:?}: {:?}", msg_str, error);
+                warn!("Failed to parse JSON record {:?}: {:?}", msg_str, error);
                 self.unparsed_count.inc();
             }
         }

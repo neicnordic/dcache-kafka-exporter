@@ -122,9 +122,6 @@ pub enum MoverInfo {
         transfer_time: u64,
         version: String,
     },
-
-    #[serde(other)]
-    Unparsed,
 }
 
 #[derive(Debug, Deserialize)]
@@ -231,7 +228,4 @@ pub enum Message {
         write_active: Option<String>,
         subject: Vec<String>,
     },
-
-    #[serde(other)]
-    Unparsed,
 }
