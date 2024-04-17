@@ -2,7 +2,9 @@ use log::{error, warn};
 use prometheus_exporter::{
     prometheus::core::{MetricVec, MetricVecBuilder},
     prometheus::{
-        IntCounter, IntCounterVec, register_int_counter, register_int_counter_vec
+        IntCounter, register_int_counter,
+        IntCounterVec, register_int_counter_vec,
+        HistogramVec, register_histogram_vec,
     }
 };
 use crate::billing::*;
@@ -13,10 +15,13 @@ pub struct Collector {
     request_count: IntCounterVec,
     restore_count: IntCounterVec,
     restore_bytes: IntCounterVec,
+    restore_seconds: HistogramVec,
     store_count: IntCounterVec,
     store_bytes: IntCounterVec,
+    store_seconds: HistogramVec,
     transfer_count: IntCounterVec,
     transfer_bytes: IntCounterVec,
+    transfer_seconds: HistogramVec,
     unparsed_count: IntCounter,
 }
 
@@ -81,6 +86,23 @@ impl MetricIndex for (Cell, Direction, String) {
     }
 }
 
+const DURATION_BUCKETS : [f64; 15] = [
+    0.0010874632336580173,
+    0.00425727462440863,
+    0.016666666666666666,
+    0.065247794019481067,
+    0.2554364774645177,
+    1.0,
+    3.9148676411688634,
+    15.32618864787106,
+    60.0,
+    234.89205847013176,
+    919.57131887226399,
+    3600.0,
+    14093.523508207918,
+    55174.279132335789,
+    216000.0,
+];
 
 impl Collector {
     pub fn new() -> Collector {
@@ -107,6 +129,11 @@ impl Collector {
                 "billing_restore_bytes",
                 "The accumulated size of files attempted restored from tape.",
                 RESTORE_STORE_LABELS).unwrap(),
+            restore_seconds: register_histogram_vec!(
+                "billing_restore_seconds",
+                "A histogram of restore times.",
+                RESTORE_STORE_LABELS,
+                Vec::from(DURATION_BUCKETS)).unwrap(),
 
             store_count: register_int_counter_vec!(
                 "billing_store_count",
@@ -116,6 +143,11 @@ impl Collector {
                 "billing_store_bytes",
                 "The accumulated size of files attempted flushed to tape.",
                 RESTORE_STORE_LABELS).unwrap(),
+            store_seconds: register_histogram_vec!(
+                "billing_store_seconds",
+                "A histogram of store times.",
+                RESTORE_STORE_LABELS,
+                Vec::from(DURATION_BUCKETS)).unwrap(),
 
             transfer_count: register_int_counter_vec!(
                 "billing_transfer_count",
@@ -125,6 +157,11 @@ impl Collector {
                 "billing_transfer_bytes",
                 "The number of bytes transferred, including from failed transfers.",
                 TRANSFER_LABELS).unwrap(),
+            transfer_seconds: register_histogram_vec!(
+                "billing_transfer_seconds",
+                "A histogram of transfer times.",
+                TRANSFER_LABELS,
+                Vec::from(DURATION_BUCKETS)).unwrap(),
 
             unparsed_count: register_int_counter!(
                 "billing_unparsed_count",
@@ -144,20 +181,24 @@ impl Collector {
                 let index = (cell, status, storage_info);
                 MetricIndex::project(&self.request_count, &index).inc();
             }
-            Ok(Message::Restore {cell, status, storage_info, hsm, file_size, ..}) => {
+            Ok(Message::Restore {cell, status, storage_info, hsm, file_size, transfer_time, ..}) => {
                 let index = (cell, status, storage_info, hsm);
                 MetricIndex::project(&self.restore_count, &index).inc();
                 MetricIndex::project(&self.restore_bytes, &index).inc_by(file_size);
+                MetricIndex::project(&self.restore_seconds, &index).observe(transfer_time as f64 / 1000.0);
             }
-            Ok(Message::Store {cell, status, storage_info, hsm, file_size, ..}) => {
+            Ok(Message::Store {cell, status, storage_info, hsm, file_size, transfer_time, ..}) => {
                 let index = (cell, status, storage_info, hsm);
                 MetricIndex::project(&self.store_count, &index).inc();
                 MetricIndex::project(&self.store_bytes, &index).inc_by(file_size);
+                MetricIndex::project(&self.store_seconds, &index).observe(transfer_time as f64 / 1000.0);
             }
-            Ok(Message::Transfer {cell, direction, storage_info, transfer_size, ..}) => {
+            Ok(Message::Transfer {cell, direction, storage_info, transfer_size, transfer_time, ..}) => {
                 let index = (cell, direction, storage_info);
                 MetricIndex::project(&self.transfer_count, &index).inc();
                 MetricIndex::project(&self.transfer_bytes, &index).inc_by(transfer_size);
+                MetricIndex::project(&self.transfer_seconds, &index)
+                    .observe(transfer_time as f64 / 1000.0);
             }
             Ok(Message::Unparsed) => {
                 warn!("Unrecognized billing record {:?}", msg_str);
