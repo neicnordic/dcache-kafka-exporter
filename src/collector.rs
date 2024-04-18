@@ -81,7 +81,10 @@ fn proj<T : MetricVecBuilder>(vec: &MetricVec<T>, index: &Message) -> T::M {
     }
 }
 
-const DURATION_BUCKETS : [f64; 15] = [
+// Buckets suitable for human presentation of durations which are typically
+// around a minute or longer.  This is a precise geometrical sequence which
+// aligns to 1 minute and 1 hour.
+const LONG_DURATION_BUCKETS : [f64; 15] = [
     0.0010874632336580173,
     0.00425727462440863,
     0.016666666666666666,
@@ -128,7 +131,7 @@ impl Collector {
                 "billing_restore_seconds",
                 "A histogram of restore times.",
                 RESTORE_STORE_LABELS,
-                Vec::from(DURATION_BUCKETS)).unwrap(),
+                Vec::from(LONG_DURATION_BUCKETS)).unwrap(),
 
             store_count: register_int_counter_vec!(
                 "billing_store_count",
@@ -142,7 +145,7 @@ impl Collector {
                 "billing_store_seconds",
                 "A histogram of store times.",
                 RESTORE_STORE_LABELS,
-                Vec::from(DURATION_BUCKETS)).unwrap(),
+                Vec::from(LONG_DURATION_BUCKETS)).unwrap(),
 
             transfer_count: register_int_counter_vec!(
                 "billing_transfer_count",
@@ -156,7 +159,7 @@ impl Collector {
                 "billing_transfer_seconds",
                 "A histogram of transfer times.",
                 TRANSFER_LABELS,
-                Vec::from(DURATION_BUCKETS)).unwrap(),
+                Vec::from(LONG_DURATION_BUCKETS)).unwrap(),
 
             unparsed_count: register_int_counter!(
                 "billing_unparsed_count",
