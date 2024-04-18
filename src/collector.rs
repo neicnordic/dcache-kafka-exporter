@@ -13,6 +13,7 @@ pub struct Collector {
     remove_count: IntCounterVec,
     remove_bytes: IntCounterVec,
     request_count: IntCounterVec,
+    request_session_seconds: HistogramVec,
     restore_count: IntCounterVec,
     restore_bytes: IntCounterVec,
     restore_seconds: HistogramVec,
@@ -102,6 +103,24 @@ const LONG_DURATION_BUCKETS : [f64; 15] = [
     216000.0,
 ];
 
+// Buckets suitable for short durations.  This is a precise geometrical
+// sequence aligned to factors of 10.
+const SHORT_DURATION_BUCKETS : [f64; 13] = [
+    0.001,
+    0.0031622776601683794,
+    0.01,
+    0.031622776601683791,
+    0.10000000000000001,
+    0.31622776601683794,
+    1.0,
+    3.1622776601683795,
+    10.0,
+    31.622776601683793,
+    100.0,
+    316.22776601683796,
+    1000.0
+];
+
 impl Collector {
     pub fn new() -> Collector {
         Collector {
@@ -118,6 +137,11 @@ impl Collector {
                 "billing_request_count",
                 "The number of request events seen.",
                 REMOVE_REQUEST_LABELS).unwrap(),
+            request_session_seconds: register_histogram_vec!(
+                "billing_request_session_duration",
+                "A histogram of duration of request sessions.",
+                REMOVE_REQUEST_LABELS,
+                Vec::from(SHORT_DURATION_BUCKETS)).unwrap(),
 
             restore_count: register_int_counter_vec!(
                 "billing_restore_count",
@@ -173,8 +197,9 @@ impl Collector {
                 proj(&self.remove_count, &msg).inc();
                 proj(&self.remove_bytes, &msg).inc_by(file_size);
             }
-            Message::Request {..} => {
+            Message::Request {session_duration, ..} => {
                 proj(&self.request_count, &msg).inc();
+                proj(&self.request_session_seconds, &msg).observe(session_duration as f64 / 1000.0);
             }
             Message::Restore {file_size, transfer_time, ..} => {
                 proj(&self.restore_count, &msg).inc();
