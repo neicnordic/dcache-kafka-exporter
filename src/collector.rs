@@ -23,7 +23,8 @@ pub struct Collector {
     transfer_count: IntCounterVec,
     transfer_bytes: IntCounterVec,
     transfer_seconds: HistogramVec,
-    transfer_mean_bandwidth_bytes_per_second: HistogramVec,
+    transfer_mean_read_bandwidth_bytes_per_second: HistogramVec,
+    transfer_mean_write_bandwidth_bytes_per_second: HistogramVec,
     unparsed_count: IntCounter,
 }
 
@@ -203,9 +204,14 @@ impl Collector {
                 "A histogram of transfer times.",
                 TRANSFER_LABELS,
                 Vec::from(LONG_DURATION_BUCKETS)).unwrap(),
-            transfer_mean_bandwidth_bytes_per_second: register_histogram_vec!(
-                "billing_transfer_mean_bandwidth_bytes_per_second",
-                "A histogram of the mean read or write bandwidth for transfers.",
+            transfer_mean_read_bandwidth_bytes_per_second: register_histogram_vec!(
+                "billing_transfer_mean_read_bandwidth_bytes_per_second",
+                "A histogram of the mean read bandwidth for transfers.",
+                TRANSFER_LABELS,
+                Vec::from(TRANSFER_RATE_BUCKETS)).unwrap(),
+            transfer_mean_write_bandwidth_bytes_per_second: register_histogram_vec!(
+                "billing_transfer_mean_write_bandwidth_bytes_per_second",
+                "A histogram of the mean write bandwidth for transfers.",
                 TRANSFER_LABELS,
                 Vec::from(TRANSFER_RATE_BUCKETS)).unwrap(),
 
@@ -240,8 +246,13 @@ impl Collector {
                 proj(&self.transfer_count, &msg).inc();
                 proj(&self.transfer_bytes, &msg).inc_by(transfer_size);
                 proj(&self.transfer_seconds, &msg).observe(transfer_time as f64 / 1000.0);
-                if let Some(bandwidth) = mean_read_bandwidth.or(mean_write_bandwidth) {
-                    proj(&self.transfer_mean_bandwidth_bytes_per_second, &msg).observe(bandwidth);
+                if let Some(bandwidth) = mean_read_bandwidth {
+                    proj(&self.transfer_mean_read_bandwidth_bytes_per_second, &msg)
+                        .observe(bandwidth);
+                }
+                if let Some(bandwidth) = mean_write_bandwidth {
+                    proj(&self.transfer_mean_write_bandwidth_bytes_per_second, &msg)
+                        .observe(bandwidth);
                 }
             }
         }
