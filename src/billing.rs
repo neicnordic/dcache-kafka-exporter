@@ -110,7 +110,8 @@ pub enum MoverInfo {
         #[serde(flatten)]
         direction: Direction,
         local_endpoint: String,
-        mean_read_bandwidth: Option<f64>,
+        mean_read_bandwidth: Option<f64>, // bytes/s
+        mean_write_bandwidth: Option<f64>, // bytes/s
         protocol_info: ProtocolInfo,
         queuing_time: u64,
         read_active: Option<String>,
@@ -215,7 +216,8 @@ pub enum Message {
         #[serde(flatten)]
         direction: Direction,
         local_endpoint: Option<String>,
-        mean_read_bandwidth: Option<f64>,
+        mean_read_bandwidth: Option<f64>, // bytes/s
+        mean_write_bandwidth: Option<f64>, // bytes/s
         pnfsid: String,
         protocol_info: ProtocolInfo,
         queuing_time: u64,

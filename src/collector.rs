@@ -23,6 +23,7 @@ pub struct Collector {
     transfer_count: IntCounterVec,
     transfer_bytes: IntCounterVec,
     transfer_seconds: HistogramVec,
+    transfer_mean_bandwidth_bytes_per_second: HistogramVec,
     unparsed_count: IntCounter,
 }
 
@@ -121,6 +122,20 @@ const SHORT_DURATION_BUCKETS : [f64; 13] = [
     1000.0
 ];
 
+const TRANSFER_RATE_BUCKETS : [f64; 11] = [
+    10000000.0,
+    31622776.601683792,
+    100000000.0,
+    316227766.01683795,
+    1000000000.0,
+    3162277660.1683793,
+    10000000000.0,
+    31622776601.683792,
+    100000000000.0,
+    316227766016.83795,
+    1000000000000.0,
+];
+
 impl Collector {
     pub fn new() -> Collector {
         Collector {
@@ -184,6 +199,11 @@ impl Collector {
                 "A histogram of transfer times.",
                 TRANSFER_LABELS,
                 Vec::from(LONG_DURATION_BUCKETS)).unwrap(),
+            transfer_mean_bandwidth_bytes_per_second: register_histogram_vec!(
+                "billing_transfer_mean_bandwidth_bytes_per_second",
+                "A histogram of the mean read or write bandwidth for transfers.",
+                TRANSFER_LABELS,
+                Vec::from(TRANSFER_RATE_BUCKETS)).unwrap(),
 
             unparsed_count: register_int_counter!(
                 "billing_unparsed_count",
@@ -211,10 +231,14 @@ impl Collector {
                 proj(&self.store_bytes, &msg).inc_by(file_size);
                 proj(&self.store_seconds, &msg).observe(transfer_time as f64 / 1000.0);
             }
-            Message::Transfer {transfer_size, transfer_time, ..} => {
+            Message::Transfer {transfer_size, transfer_time,
+                               mean_read_bandwidth, mean_write_bandwidth, ..} => {
                 proj(&self.transfer_count, &msg).inc();
                 proj(&self.transfer_bytes, &msg).inc_by(transfer_size);
                 proj(&self.transfer_seconds, &msg).observe(transfer_time as f64 / 1000.0);
+                if let Some(bandwidth) = mean_read_bandwidth.or(mean_write_bandwidth) {
+                    proj(&self.transfer_mean_bandwidth_bytes_per_second, &msg).observe(bandwidth);
+                }
             }
         }
     }
