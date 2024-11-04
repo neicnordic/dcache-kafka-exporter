@@ -142,81 +142,81 @@ const TRANSFER_RATE_BUCKETS : [f64; 15] = [
 ];
 
 impl Collector {
-    pub fn new() -> Collector {
+    pub fn new(metric_prefix : String) -> Collector {
         Collector {
             remove_count: register_int_counter_vec!(
-                "billing_remove_count",
+                metric_prefix.clone() + "remove_count",
                 "The number of remove events seen.",
                 REMOVE_REQUEST_LABELS).unwrap(),
             remove_bytes: register_int_counter_vec!(
-                "billing_remove_bytes",
+                metric_prefix.clone() + "remove_bytes",
                 "The accumulated size of removed files.",
                 REMOVE_REQUEST_LABELS).unwrap(),
 
             request_count: register_int_counter_vec!(
-                "billing_request_count",
+                metric_prefix.clone() + "request_count",
                 "The number of request events seen.",
                 REMOVE_REQUEST_LABELS).unwrap(),
             request_session_seconds: register_histogram_vec!(
-                "billing_request_session_duration",
+                metric_prefix.clone() + "request_session_duration",
                 "A histogram of duration of request sessions.",
                 REMOVE_REQUEST_LABELS,
                 Vec::from(SHORT_DURATION_BUCKETS)).unwrap(),
 
             restore_count: register_int_counter_vec!(
-                "billing_restore_count",
+                metric_prefix.clone() + "restore_count",
                 "The number of restore events seen.",
                 RESTORE_STORE_LABELS).unwrap(),
             restore_bytes: register_int_counter_vec!(
-                "billing_restore_bytes",
+                metric_prefix.clone() + "restore_bytes",
                 "The accumulated size of files attempted restored from tape.",
                 RESTORE_STORE_LABELS).unwrap(),
             restore_seconds: register_histogram_vec!(
-                "billing_restore_seconds",
+                metric_prefix.clone() + "restore_seconds",
                 "A histogram of restore times.",
                 RESTORE_STORE_LABELS,
                 Vec::from(LONG_DURATION_BUCKETS)).unwrap(),
 
             store_count: register_int_counter_vec!(
-                "billing_store_count",
+                metric_prefix.clone() + "store_count",
                 "The number of store events seen.",
                 RESTORE_STORE_LABELS).unwrap(),
             store_bytes: register_int_counter_vec!(
-                "billing_store_bytes",
+                metric_prefix.clone() + "store_bytes",
                 "The accumulated size of files attempted flushed to tape.",
                 RESTORE_STORE_LABELS).unwrap(),
             store_seconds: register_histogram_vec!(
-                "billing_store_seconds",
+                metric_prefix.clone() + "store_seconds",
                 "A histogram of store times.",
                 RESTORE_STORE_LABELS,
                 Vec::from(LONG_DURATION_BUCKETS)).unwrap(),
 
             transfer_count: register_int_counter_vec!(
-                "billing_transfer_count",
+                metric_prefix.clone() + "transfer_count",
                 "The number of transfer events seen.",
                 TRANSFER_LABELS).unwrap(),
             transfer_bytes: register_int_counter_vec!(
-                "billing_transfer_bytes",
+                metric_prefix.clone() + "transfer_bytes",
                 "The number of bytes transferred, including from failed transfers.",
                 TRANSFER_LABELS).unwrap(),
             transfer_seconds: register_histogram_vec!(
-                "billing_transfer_seconds",
+                metric_prefix.clone() + "transfer_seconds",
                 "A histogram of transfer times.",
                 TRANSFER_LABELS,
                 Vec::from(LONG_DURATION_BUCKETS)).unwrap(),
             transfer_mean_read_bandwidth_bytes_per_second: register_histogram_vec!(
-                "billing_transfer_mean_read_bandwidth_bytes_per_second",
+                metric_prefix.clone() + "transfer_mean_read_bandwidth_bytes_per_second",
                 "A histogram of the mean read bandwidth for transfers.",
                 TRANSFER_LABELS,
                 Vec::from(TRANSFER_RATE_BUCKETS)).unwrap(),
             transfer_mean_write_bandwidth_bytes_per_second: register_histogram_vec!(
-                "billing_transfer_mean_write_bandwidth_bytes_per_second",
+                metric_prefix.clone() + "transfer_mean_write_bandwidth_bytes_per_second",
                 "A histogram of the mean write bandwidth for transfers.",
                 TRANSFER_LABELS,
                 Vec::from(TRANSFER_RATE_BUCKETS)).unwrap(),
 
             unparsed_count: register_int_counter!(
-                "billing_unparsed_count",
+                metric_prefix.clone() + "unparsed_count",
                 "The number of unparsed events.").unwrap(),
         }
     }

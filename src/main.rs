@@ -30,6 +30,9 @@ struct Args {
     #[arg(long, default_value = "prometheus-billing-exporter")]
     kafka_group: String,
 
+    #[arg(long, default_value = "billing_")]
+    metric_prefix: String,
+
     #[arg(long, default_value = "127.0.0.1:19997")]
     listen: String,
 }
@@ -57,7 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .with_topic(args.kafka_topic)
         .with_fallback_offset(FetchOffset::Latest)
         .create()?;
-    let mut collector = collector::Collector::new();
+    let mut collector = collector::Collector::new(args.metric_prefix);
     let _exporter = prometheus_exporter::start(args.listen.parse().unwrap());
     loop {
         for msgs in kafka_consumer.poll().unwrap().iter() {
