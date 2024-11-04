@@ -1,5 +1,5 @@
 [package]
-name = "nt1-billing-exporter"
+name = "dcache-kafka-exporter"
 version = "0.1.0"
 edition = "2021"
 
