@@ -43,7 +43,7 @@ struct Args {
     #[arg(long, default_value = "billing")]
     kafka_topic: String,
 
-    #[arg(long, default_value = "prometheus-billing-exporter")]
+    #[arg(long, default_value = "dcache-kafka-exporter")]
     kafka_group: String,
 
     #[arg(long, default_value = "dcache_kafka_")]
