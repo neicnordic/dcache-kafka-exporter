@@ -239,6 +239,7 @@ pub enum Message {
         queuing_time: u64,
         read_active: Option<String>,
         session: String,
+        status: Status,
         transfer_time: u64,
         storage_info: String,
         transfer_size: u64,

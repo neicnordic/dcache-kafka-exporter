@@ -60,8 +60,9 @@ const RESTORE_STORE_LABELS : &[&str; 8] = &[
 ];
 
 // For Message::Transfer
-const TRANSFER_LABELS : &[&str; 5] = &[
+const TRANSFER_LABELS : &[&str; 6] = &[
     "cell_name", "cell_domain", "cell_type",
+    "status_code",
     "direction",
     "storage_info",
 ];
@@ -90,9 +91,10 @@ fn proj<T : MetricVecBuilder>(vec: &MetricVec<T>, index: &Message) -> T::M {
                 hsm.instance.as_str(), hsm.provider.as_str(), hsm.type_.as_str(),
             ])
         }
-        Message::Transfer {cell, direction, storage_info, ..} => {
+        Message::Transfer {cell, status, direction, storage_info, ..} => {
             vec.with_label_values(&[
                 &cell.name[..], &cell.domain[..], &cell.type_[..],
+                status.code.to_string().as_str(),
                 &direction.to_string(),
                 storage_info.as_str(),
             ])
