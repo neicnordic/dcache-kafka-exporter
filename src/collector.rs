@@ -24,6 +24,7 @@ use prometheus_exporter::{
     }
 };
 use crate::billing::*;
+use crate::message_simplifier::{MessageRewriteRules};
 
 pub struct Collector {
     remove_count: IntCounterVec,
@@ -41,7 +42,10 @@ pub struct Collector {
     transfer_seconds: HistogramVec,
     transfer_mean_read_bandwidth_bytes_per_second: HistogramVec,
     transfer_mean_write_bandwidth_bytes_per_second: HistogramVec,
+    message_count: IntCounterVec,
     unparsed_count: IntCounter,
+
+    message_rewrite_rules: Option<MessageRewriteRules>,
 }
 
 // For Message::Remove and Message::Request
@@ -65,6 +69,13 @@ const TRANSFER_LABELS : &[&str; 6] = &[
     "status_code",
     "direction",
     "storage_info",
+];
+
+// For any message with non-zero status code.
+const MESSAGE_LABELS : &[&str; 5] = &[
+    "cell_name", "cell_domain", "cell_type",
+    "status_code",
+    "status_msg",
 ];
 
 // Value projections corresponding to the above labels.
@@ -160,7 +171,7 @@ const TRANSFER_RATE_BUCKETS : [f64; 15] = [
 ];
 
 impl Collector {
-    pub fn new(metric_prefix : String) -> Collector {
+    pub fn new(metric_prefix: String, enable_message_count: bool) -> Collector {
         Collector {
             remove_count: register_int_counter_vec!(
                 metric_prefix.clone() + "remove_count",
@@ -233,9 +244,38 @@ impl Collector {
                 TRANSFER_LABELS,
                 Vec::from(TRANSFER_RATE_BUCKETS)).unwrap(),
 
+            message_count: register_int_counter_vec!(
+                metric_prefix.clone() + "message_count",
+                "Status messages from any message type, simplified to reduce \
+                 cardinality.",
+                MESSAGE_LABELS).unwrap(),
+
             unparsed_count: register_int_counter!(
                 metric_prefix.clone() + "unparsed_count",
                 "The number of unparsed events.").unwrap(),
+
+            message_rewrite_rules:
+                if enable_message_count { Some(MessageRewriteRules::new()) }
+                else { None },
+        }
+    }
+
+    fn update_message_count_metric(&mut self, index: &Message) {
+        let Some(rules) = &self.message_rewrite_rules else { return; };
+        match index {
+            Message::Remove {cell, status, ..} |
+            Message::Request {cell, status, ..} |
+            Message::Restore {cell, status, ..} |
+            Message::Store {cell, status, ..} |
+            Message::Transfer {cell, status, ..} => {
+                if status.msg == "" { return; }
+                let msg = rules.rewrite(&status.msg);
+                self.message_count.with_label_values(&[
+                    &cell.name[..], &cell.domain[..], &cell.type_[..],
+                    status.code.to_string().as_str(),
+                    &msg,
+                ]).inc();
+            }
         }
     }
 
@@ -274,6 +314,7 @@ impl Collector {
                 }
             }
         }
+        self.update_message_count_metric(&msg);
     }
 
     pub fn process_message(&mut self, msg_str: &str) {

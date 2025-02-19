@@ -23,6 +23,7 @@ use openssl::ssl;
 
 mod billing;
 mod collector;
+mod message_simplifier;
 
 #[derive(Parser)]
 struct Args {
@@ -51,6 +52,10 @@ struct Args {
 
     #[arg(long, default_value = "127.0.0.1:19997")]
     listen: String,
+
+    /// Enables the experimental *_message_count metric.
+    #[arg(long)]
+    enable_message_count: bool,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -76,7 +81,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         .with_topic(args.kafka_topic)
         .with_fallback_offset(FetchOffset::Latest)
         .create()?;
-    let mut collector = collector::Collector::new(args.metric_prefix);
+    let mut collector =
+        collector::Collector::new(args.metric_prefix, args.enable_message_count);
     let _exporter = prometheus_exporter::start(args.listen.parse().unwrap());
     loop {
         for msgs in kafka_consumer.poll().unwrap().iter() {
