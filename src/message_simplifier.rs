@@ -50,21 +50,24 @@ fn domain_name_replacer(caps: &Captures<'_>, dst: &mut String) {
 }
 
 // The order matters, e.g. integer must come after IP addresses.
-const RULES : [(&str, &str, Option<ReplacerFn>); 10] = [
+const RULES : [(&str, &str, Option<ReplacerFn>); 13] = [
     ("url", r"\w+://[^ ]+[^,.;:?()\[\]]", None),
     ("date-and-time",
      r"(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \w{3} \d+ \d{2}:\d{2}:\d{2} \w+ \d{4}",
      None),
-    ("ipv4-address-and-port", r"\b\d+(\.\d+){3}:\d+", None),
-    ("ipv4-address", r"\b\d+(\.\d+){3}", None),
-    ("ipv6-address-and-port", r"\[[0-9a-f]+(:[0-9a-f]+)+\]:\d+\b", None),
-    ("ipv6-address", r"\b[0-9a-f]+(:[0-9a-f]+)+", None),
-    ("domain-name", r"(?x) \<
-               ([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+
-        (?<last>[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)
-     \>", Some(domain_name_replacer)),
-    ("distinguished-name", r"\<(\w+=[^,]+,)+(CN|DC|C)=\w+\>", None),
+    ("ipv4-address-and-port",   r"\b\d+(\.\d+){3}:\d+",                 None),
+    ("ipv4-address",            r"\b\d+(\.\d+){3}",                     None),
+    ("ipv6-address-and-port",   r"\[[0-9a-f]+(:[0-9a-f]+)+\]:\d+\b",    None),
+    ("ipv6-address",            r"\[[0-9a-f]+(:[0-9a-f]+)+\]",          None),
+    ("ipv6-address",            r"\b[0-9a-f]+(:[0-9a-f]+)+",            None),
+    ("dcache-cell", r"\[>\w+@\w+\]", None),
+    ("dns-domain",
+     r"(?x) \< ([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+
+        (?<last>[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?) \>",
+     Some(domain_name_replacer)),
+    ("distinguished-name", r"\<(\w+=([^,]|\\,)+,)+(CN|DC|C)=\w+\>", None),
     ("pnfsid", r"\b[0-9A-F]{36}\b", None),
+    ("path", r"/[^ ]+\b", None),
     ("int", r"\b\d+\b", None),
 ];
 
