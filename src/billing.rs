@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::fmt;
-use serde::{de, Deserialize};
+use serde::{de, Deserialize, Deserializer};
 
 #[derive(Debug)]
 pub enum Direction {Read, Write, P2p}
@@ -114,6 +114,12 @@ pub struct Cell {
     pub type_: String,
 }
 
+fn deserialize_u64_option<'de, D>(d: D) -> Result<Option<u64>, D::Error>
+where D: Deserializer<'de> {
+    Deserialize::deserialize(d)
+        .map(|x : i64| { if x < 0 { None } else { Some(x as u64) } })
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "msgType")]
 pub enum MoverInfo {
@@ -135,7 +141,8 @@ pub enum MoverInfo {
         session: String,
         status: Status,
         transfer_path: String,
-        transfer_size: u64,
+        #[serde(deserialize_with = "deserialize_u64_option")]
+        transfer_size: Option<u64>,
         transfer_time: u64,
         version: String,
     },
