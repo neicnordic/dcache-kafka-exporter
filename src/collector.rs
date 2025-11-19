@@ -302,7 +302,7 @@ impl Collector {
             Message::Transfer {transfer_size, transfer_time,
                                mean_read_bandwidth, mean_write_bandwidth, ..} => {
                 proj(&self.transfer_count, &msg).inc();
-                proj(&self.transfer_bytes, &msg).inc_by(transfer_size);
+                proj(&self.transfer_bytes, &msg).inc_by(transfer_size.unwrap_or(0));
                 proj(&self.transfer_seconds, &msg).observe(transfer_time as f64 / 1000.0);
                 if let Some(bandwidth) = mean_read_bandwidth {
                     proj(&self.transfer_mean_read_bandwidth_bytes_per_second, &msg)

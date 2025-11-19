@@ -114,6 +114,12 @@ pub struct Cell {
     pub type_: String,
 }
 
+// dCache uses -1 for null in some places.
+fn deserialize_u32_option<'de, D>(d: D) -> Result<Option<u32>, D::Error>
+where D: Deserializer<'de> {
+    Deserialize::deserialize(d)
+        .map(|x : i32| { if x < 0 { None } else { Some(x as u32) } })
+}
 fn deserialize_u64_option<'de, D>(d: D) -> Result<Option<u64>, D::Error>
 where D: Deserializer<'de> {
     Deserialize::deserialize(d)
@@ -175,10 +181,10 @@ pub enum Message {
         client: String,
         client_chain: String,
         file_size: u64,
-        #[serde(rename = "mappedGID")]
-        mapped_gid: u32,
-        #[serde(rename = "mappedUID")]
-        mapped_uid: u32,
+        #[serde(rename = "mappedGID", deserialize_with = "deserialize_u32_option")]
+        mapped_gid: Option<u32>,
+        #[serde(rename = "mappedUID", deserialize_with = "deserialize_u32_option")]
+        mapped_uid: Option<u32>,
         mover_info: Option<MoverInfo>,
         owner: Option<String>,
         pnfsid: Option<String>,
@@ -249,7 +255,8 @@ pub enum Message {
         status: Status,
         transfer_time: u64,
         storage_info: String,
-        transfer_size: u64,
+        #[serde(deserialize_with = "deserialize_u64_option")]
+        transfer_size: Option<u64>,
         transfer_path: String,
         write_active: Option<String>,
         subject: Vec<String>,
