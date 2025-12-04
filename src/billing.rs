@@ -137,7 +137,7 @@ pub enum MoverInfo {
         date: String, // FIXME
         #[serde(flatten)]
         direction: Direction,
-        local_endpoint: String,
+        local_endpoint: Option<String>,
         mean_read_bandwidth: Option<f64>, // bytes/s
         mean_write_bandwidth: Option<f64>, // bytes/s
         protocol_info: ProtocolInfo,
