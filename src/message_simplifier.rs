@@ -66,9 +66,9 @@ const RULES : [(&str, &str, Option<ReplacerFn>); 14] = [
      r"(?x) \< ([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+
         (?<last>[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?) \>",
      Some(domain_name_replacer)),
-    ("distinguished-name", r"\<(\w+=([^,]|\\,)+,)+(CN|DC|C)=\w+\>", None),
+    ("distinguished-name", r"\<(\w+=([^,]|\\,)+,)+(?i:CN|DC|C)=\w+\>", None),
     ("pnfsid", r"\b[0-9A-F]{36}\b", None),
-    ("path", r"\B/[^ ]+\b", None),
+    ("path", r"\B/[^ <>]+\b", None),
     ("int", r"\b\d+\b", None),
 ];
 
