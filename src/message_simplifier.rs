@@ -60,15 +60,15 @@ const RULES : [(&str, &str, Option<ReplacerFn>); 14] = [
     ("ipv6-address-and-port",   r"\[[0-9a-f]+(:[0-9a-f]+)+\]:\d+\b",    None),
     ("ipv6-address",            r"\[[0-9a-f]+(:[0-9a-f]+)+\]",          None),
     ("ipv6-address",            r"\b[0-9a-f]+(:[0-9a-f]+)+",            None),
-    ("dcache-cell", r"\[>\w+@(\w+:)?\w+\]", None),
+    ("dcache-cell", r"\[>[a-zA-Z0-9_:.@-]*\]", None),
+    ("size", r"\b\d+(\.\d+)? ([kMGTE]i?)?B\b", None),
     ("dns-domain",
      r"(?x) \< ([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+
         (?<last>[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?) \>",
      Some(domain_name_replacer)),
     ("distinguished-name", r"\<(\w+=([^,]|\\,)+,)+(CN|DC|C)=\w+\>", None),
     ("pnfsid", r"\b[0-9A-F]{36}\b", None),
-    ("path", r"/[^ ]+\b", None),
-    ("size", r"\b\d+ ([kMGTE]i?)?B\b", None),
+    ("path", r"\B/[^ ]+\b", None),
     ("int", r"\b\d+\b", None),
 ];
 
