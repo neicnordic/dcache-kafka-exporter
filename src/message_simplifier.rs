@@ -50,10 +50,11 @@ fn domain_name_replacer(caps: &Captures<'_>, dst: &mut String) {
 }
 
 // The order matters, e.g. integer must come after IP addresses.
-const RULES : [(&str, &str, Option<ReplacerFn>); 16] = [
+const RULES : [(&str, &str, Option<ReplacerFn>); 17] = [
     ("url", r"\w+://[^[:space:]]+[^[:space:],.;:?()\[\]]", None),
     ("pool-name", r"PoolName=[[:alnum:]_-]+", None),
     ("pool-address", r"PoolAddress=[[:alnum]_@/-]+", None),
+    ("quoted-ref", r">[[:alnum:]_@-]+<", None),
     ("date-and-time",
      r"(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \w{3} \d+ \d{2}:\d{2}:\d{2} \w+ \d{4}",
      None),
@@ -62,7 +63,7 @@ const RULES : [(&str, &str, Option<ReplacerFn>); 16] = [
     ("ipv6-address-and-port",   r"\[[0-9a-f]+(:[0-9a-f]+)+\]:\d+\b",    None),
     ("ipv6-address",            r"\[[0-9a-f]+(:[0-9a-f]+)+\]",          None),
     ("ipv6-address",            r"\b[0-9a-f]+(:[0-9a-f]+)+",            None),
-    ("dcache-cell", r"\[>[a-zA-Z0-9_:.@-]*\]", None),
+    ("dcache-cell", r"\[>[[:alnum:]_:.@-]*\]", None),
     ("size", r"\b\d+(\.\d+)? ([kMGTE]i?)?B\b", None),
     ("dns-domain",
      r"(?x) \< ([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+
