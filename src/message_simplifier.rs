@@ -65,13 +65,13 @@ const RULES : [(&str, &str, Option<ReplacerFn>); 17] = [
     ("ipv6-address",            r"\b[0-9a-f]+(:[0-9a-f]+)+",            None),
     ("dcache-cell", r"\[>[[:alnum:]_:.@-]*\]", None),
     ("size", r"\b\d+(\.\d+)? ([kMGTE]i?)?B\b", None),
+    ("distinguished-name", r"\<(\w+=([^,]|\\,)+,)+(?i:CN|DC|C)=\w+\>", None),
+    ("pnfsid", r"\b[0-9A-F]{36}\b", None),
+    ("path", r"\B/[^ <>]+\b", None),
     ("dns-domain",
      r"(?x) \< ([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+
         (?<last>[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?) \>",
      Some(domain_name_replacer)),
-    ("distinguished-name", r"\<(\w+=([^,]|\\,)+,)+(?i:CN|DC|C)=\w+\>", None),
-    ("pnfsid", r"\b[0-9A-F]{36}\b", None),
-    ("path", r"\B/[^ <>]+\b", None),
     ("int", r"\b\d+\b", None),
 ];
 
