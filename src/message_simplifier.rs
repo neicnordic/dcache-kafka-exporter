@@ -50,7 +50,7 @@ fn domain_name_replacer(caps: &Captures<'_>, dst: &mut String) {
 }
 
 // The order matters, e.g. integer must come after IP addresses.
-const RULES : [(&str, &str, Option<ReplacerFn>); 17] = [
+const RULES : [(&str, &str, Option<ReplacerFn>); 18] = [
     ("url", r"\w+://[^[:space:]]+[^[:space:],.;:?()\[\]]", None),
     ("pool-name", r"PoolName=[[:alnum:]_-]+", None),
     ("pool-address", r"PoolAddress=[[:alnum]_@/-]+", None),
@@ -58,6 +58,7 @@ const RULES : [(&str, &str, Option<ReplacerFn>); 17] = [
     ("date-and-time",
      r"(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \w{3} \d+ \d{2}:\d{2}:\d{2} \w+ \d{4}",
      None),
+    ("checksum", r"\[\d+:\x+\]", None),
     ("ipv4-address-and-port",   r"\b\d+(\.\d+){3}:\d+",                 None),
     ("ipv4-address",            r"\b\d+(\.\d+){3}",                     None),
     ("ipv6-address-and-port",   r"\[[0-9a-f]+(:[0-9a-f]+)+\]:\d+\b",    None),
