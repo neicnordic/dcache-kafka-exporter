@@ -56,6 +56,9 @@ struct Args {
     /// Enables the experimental *_message_count metric.
     #[arg(long)]
     enable_message_count: bool,
+
+    #[arg(long = "shorten-cell", value_name = "PREFIX")]
+    shortened_cell_names: Vec<String>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -82,7 +85,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         .with_fallback_offset(FetchOffset::Latest)
         .create()?;
     let mut collector =
-        collector::Collector::new(args.metric_prefix, args.enable_message_count);
+        collector::Collector::new(
+            args.metric_prefix,
+            args.enable_message_count,
+            args.shortened_cell_names);
     let _exporter = prometheus_exporter::start(args.listen.parse().unwrap());
     loop {
         for msgs in kafka_consumer.poll().unwrap().iter() {

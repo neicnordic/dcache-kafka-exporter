@@ -27,6 +27,8 @@ use crate::billing::*;
 use crate::message_simplifier::{MessageRewriteRules};
 
 pub struct Collector {
+    shortened_cell_names: Vec<String>,
+
     remove_count: IntCounterVec,
     remove_bytes: IntCounterVec,
     request_count: IntCounterVec,
@@ -77,41 +79,6 @@ const MESSAGE_LABELS : &[&str; 5] = &[
     "status_code",
     "status_msg",
 ];
-
-// Value projections corresponding to the above labels.
-fn proj<T : MetricVecBuilder>(vec: &MetricVec<T>, index: &Message) -> T::M {
-    match index {
-        Message::Remove {cell, status, storage_info, ..} |
-        Message::Request {cell, status, storage_info, ..} => {
-            let storage_info: &str = match storage_info {
-                None => { "" }
-                Some(s) => { s.as_str() }
-            };
-            vec.with_label_values(&[
-                cell.name.as_str(), cell.domain.as_str(), cell.type_.as_str(),
-                status.code.to_string().as_str(),
-                storage_info,
-            ])
-        }
-        Message::Restore {cell, status, storage_info, hsm, ..} |
-        Message::Store {cell, status, storage_info, hsm, ..} => {
-            vec.with_label_values(&[
-                cell.name.as_str(), cell.domain.as_str(), cell.type_.as_str(),
-                status.code.to_string().as_str(),
-                storage_info.as_str(),
-                hsm.instance.as_str(), hsm.provider.as_str(), hsm.type_.as_str(),
-            ])
-        }
-        Message::Transfer {cell, status, direction, storage_info, ..} => {
-            vec.with_label_values(&[
-                &cell.name[..], &cell.domain[..], &cell.type_[..],
-                status.code.to_string().as_str(),
-                &direction.to_string(),
-                storage_info.as_str(),
-            ])
-        }
-    }
-}
 
 // Buckets suitable for human presentation of durations which are typically
 // around a minute or longer.  This is a precise geometrical sequence which
@@ -171,8 +138,14 @@ const TRANSFER_RATE_BUCKETS : [f64; 15] = [
 ];
 
 impl Collector {
-    pub fn new(metric_prefix: String, enable_message_count: bool) -> Collector {
+    pub fn new(
+        metric_prefix: String,
+        enable_message_count: bool,
+        shortened_cell_names: Vec<String>
+    ) -> Collector {
         Collector {
+            shortened_cell_names: shortened_cell_names,
+
             remove_count: register_int_counter_vec!(
                 metric_prefix.clone() + "remove_count",
                 "The number of remove events seen.",
@@ -260,6 +233,60 @@ impl Collector {
         }
     }
 
+    fn shorten_cell_name<'a>(&'a self, cell: &'a str) -> &'a str {
+        return self.shortened_cell_names
+            .iter().find_map(|prefix| {
+                if prefix.len() < cell.len() && cell.starts_with(prefix)
+                        && &cell[prefix.len() .. prefix.len() + 1] == "-" {
+                    return Some(prefix.as_str())
+                } else {
+                    return None
+                }
+            })
+            .unwrap_or(cell);
+    }
+
+    // Value projections corresponding to the above labels.
+    fn proj<T : MetricVecBuilder>(&self, vec: &MetricVec<T>, index: &Message) -> T::M {
+        match index {
+            Message::Remove {cell, status, storage_info, ..} |
+            Message::Request {cell, status, storage_info, ..} => {
+                let storage_info: &str = match storage_info {
+                    None => { "" }
+                    Some(s) => { s.as_str() }
+                };
+                vec.with_label_values(&[
+                    self.shorten_cell_name(cell.name.as_str()),
+                    cell.domain.as_str(),
+                    cell.type_.as_str(),
+                    status.code.to_string().as_str(),
+                    storage_info,
+                ])
+            }
+            Message::Restore {cell, status, storage_info, hsm, ..} |
+            Message::Store {cell, status, storage_info, hsm, ..} => {
+                vec.with_label_values(&[
+                    self.shorten_cell_name(cell.name.as_str()),
+                    cell.domain.as_str(),
+                    cell.type_.as_str(),
+                    status.code.to_string().as_str(),
+                    storage_info.as_str(),
+                    hsm.instance.as_str(), hsm.provider.as_str(), hsm.type_.as_str(),
+                ])
+            }
+            Message::Transfer {cell, status, direction, storage_info, ..} => {
+                vec.with_label_values(&[
+                    self.shorten_cell_name(&cell.name[..]),
+                    &cell.domain[..],
+                    &cell.type_[..],
+                    status.code.to_string().as_str(),
+                    &direction.to_string(),
+                    storage_info.as_str(),
+                ])
+            }
+        }
+    }
+
     fn update_message_count_metric(&mut self, index: &Message) {
         let Some(rules) = &self.message_rewrite_rules else { return; };
         match index {
@@ -271,7 +298,9 @@ impl Collector {
                 if status.msg == "" { return; }
                 let msg = rules.rewrite(&status.msg);
                 self.message_count.with_label_values(&[
-                    &cell.name[..], &cell.domain[..], &cell.type_[..],
+                    self.shorten_cell_name(&cell.name[..]),
+                    &cell.domain[..],
+                    &cell.type_[..],
                     status.code.to_string().as_str(),
                     &msg,
                 ]).inc();
@@ -282,34 +311,34 @@ impl Collector {
     fn update_metrics(&mut self, msg: Message) {
         match msg {
             Message::Remove {file_size, ..} => {
-                proj(&self.remove_count, &msg).inc();
-                proj(&self.remove_bytes, &msg).inc_by(file_size);
+                self.proj(&self.remove_count, &msg).inc();
+                self.proj(&self.remove_bytes, &msg).inc_by(file_size);
             }
             Message::Request {session_duration, ..} => {
-                proj(&self.request_count, &msg).inc();
-                proj(&self.request_session_seconds, &msg).observe(session_duration as f64 / 1000.0);
+                self.proj(&self.request_count, &msg).inc();
+                self.proj(&self.request_session_seconds, &msg).observe(session_duration as f64 / 1000.0);
             }
             Message::Restore {file_size, transfer_time, ..} => {
-                proj(&self.restore_count, &msg).inc();
-                proj(&self.restore_bytes, &msg).inc_by(file_size);
-                proj(&self.restore_seconds, &msg).observe(transfer_time as f64 / 1000.0);
+                self.proj(&self.restore_count, &msg).inc();
+                self.proj(&self.restore_bytes, &msg).inc_by(file_size);
+                self.proj(&self.restore_seconds, &msg).observe(transfer_time as f64 / 1000.0);
             }
             Message::Store {file_size, transfer_time, ..} => {
-                proj(&self.store_count, &msg).inc();
-                proj(&self.store_bytes, &msg).inc_by(file_size);
-                proj(&self.store_seconds, &msg).observe(transfer_time as f64 / 1000.0);
+                self.proj(&self.store_count, &msg).inc();
+                self.proj(&self.store_bytes, &msg).inc_by(file_size);
+                self.proj(&self.store_seconds, &msg).observe(transfer_time as f64 / 1000.0);
             }
             Message::Transfer {transfer_size, transfer_time,
                                mean_read_bandwidth, mean_write_bandwidth, ..} => {
-                proj(&self.transfer_count, &msg).inc();
-                proj(&self.transfer_bytes, &msg).inc_by(transfer_size.unwrap_or(0));
-                proj(&self.transfer_seconds, &msg).observe(transfer_time as f64 / 1000.0);
+                self.proj(&self.transfer_count, &msg).inc();
+                self.proj(&self.transfer_bytes, &msg).inc_by(transfer_size.unwrap_or(0));
+                self.proj(&self.transfer_seconds, &msg).observe(transfer_time as f64 / 1000.0);
                 if let Some(bandwidth) = mean_read_bandwidth {
-                    proj(&self.transfer_mean_read_bandwidth_bytes_per_second, &msg)
+                    self.proj(&self.transfer_mean_read_bandwidth_bytes_per_second, &msg)
                         .observe(bandwidth);
                 }
                 if let Some(bandwidth) = mean_write_bandwidth {
-                    proj(&self.transfer_mean_write_bandwidth_bytes_per_second, &msg)
+                    self.proj(&self.transfer_mean_write_bandwidth_bytes_per_second, &msg)
                         .observe(bandwidth);
                 }
             }
