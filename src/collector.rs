@@ -74,9 +74,10 @@ const TRANSFER_LABELS : &[&str; 6] = &[
 ];
 
 // For any message with non-zero status code.
-const MESSAGE_LABELS : &[&str; 5] = &[
+const MESSAGE_LABELS : &[&str; 6] = &[
     "cell_name", "cell_domain", "cell_type",
     "status_code",
+    "storage_info",
     "status_msg",
 ];
 
@@ -287,23 +288,34 @@ impl Collector {
         }
     }
 
-    fn update_message_count_metric(&mut self, index: &Message) {
+    fn update_message_count_metric_aux(
+            &self, rules: &MessageRewriteRules,
+            cell: &Cell, status: &Status, storage_info: &str) {
+        if status.msg == "" { return; }
+        let msg = rules.rewrite(&status.msg);
+        self.message_count.with_label_values(&[
+            self.shorten_cell_name(&cell.name[..]),
+            &cell.domain[..],
+            &cell.type_[..],
+            status.code.to_string().as_str(),
+            storage_info,
+            &msg,
+        ]).inc();
+    }
+
+    fn update_message_count_metric(&mut self, msg: &Message) {
         let Some(rules) = &self.message_rewrite_rules else { return; };
-        match index {
-            Message::Remove {cell, status, ..} |
-            Message::Request {cell, status, ..} |
-            Message::Restore {cell, status, ..} |
-            Message::Store {cell, status, ..} |
-            Message::Transfer {cell, status, ..} => {
-                if status.msg == "" { return; }
-                let msg = rules.rewrite(&status.msg);
-                self.message_count.with_label_values(&[
-                    self.shorten_cell_name(&cell.name[..]),
-                    &cell.domain[..],
-                    &cell.type_[..],
-                    status.code.to_string().as_str(),
-                    &msg,
-                ]).inc();
+        match msg {
+            Message::Remove {cell, status, storage_info: None, ..} |
+            Message::Request {cell, status, storage_info: None, ..} => {
+                self.update_message_count_metric_aux(rules, cell, status, "");
+            }
+            Message::Remove {cell, status, storage_info: Some(storage_info), ..} |
+            Message::Request {cell, status, storage_info: Some(storage_info), ..} |
+            Message::Restore {cell, status, storage_info, ..} |
+            Message::Store {cell, status, storage_info, ..} |
+            Message::Transfer {cell, status, storage_info, ..} => {
+                self.update_message_count_metric_aux(rules, cell, status, storage_info);
             }
         }
     }
