@@ -58,7 +58,7 @@ const RULES : [(&str, &str, Option<ReplacerFn>); 18] = [
     ("date-and-time",
      r"(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \w{3} \d+ \d{2}:\d{2}:\d{2} \w+ \d{4}",
      None),
-    ("checksum", r"\[\d+:\x+\]", None),
+    ("checksum", r"\[[[:digit:]]+:[[:xdigit:]]+\]", None),
     ("ipv4-address-and-port",   r"\b\d+(\.\d+){3}:\d+",                 None),
     ("ipv4-address",            r"\b\d+(\.\d+){3}",                     None),
     ("ipv6-address-and-port",   r"\[[0-9a-f]+(:[0-9a-f]+)+\]:\d+\b",    None),
