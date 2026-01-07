@@ -291,7 +291,6 @@ impl Collector {
     fn update_message_count_metric_aux(
             &self, rules: &MessageRewriteRules,
             cell: &Cell, status: &Status, storage_info: &str) {
-        if status.msg == "" { return; }
         let msg = rules.rewrite(&status.msg);
         self.message_count.with_label_values(&[
             self.shorten_cell_name(&cell.name[..]),
