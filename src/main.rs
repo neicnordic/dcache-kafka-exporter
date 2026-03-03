@@ -17,9 +17,8 @@
 use std::str;
 use clap::Parser;
 use std::error::Error;
-use kafka::client::{KafkaClient, SecurityConfig};
-use kafka::consumer::{Consumer, FetchOffset};
-use openssl::ssl;
+use kafkang::client::{KafkaClient, SecurityConfig, TlsConnector};
+use kafkang::consumer::{Consumer, FetchOffset};
 
 mod billing;
 mod collector;
@@ -65,19 +64,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     env_logger::init();
 
-    let mut builder = ssl::SslConnector::builder(ssl::SslMethod::tls_client())?;
-    if let Some(p) = args.cert_path {
-        builder.set_certificate_file(p, ssl::SslFiletype::PEM)?;
-    }
-    if let Some(p) = args.key_path {
-        builder.set_private_key_file(p, ssl::SslFiletype::PEM)?;
-    }
-    if let Some(p) = args.ca_path {
-        builder.set_ca_file(p)?;
-    }
-    let ssl_connector = builder.build();
 
-    let security_config = SecurityConfig::new(ssl_connector);
+    let builder = TlsConnector::builder();
+    let builder =
+        match (args.cert_path, args.key_path) {
+            (None, _) | (_, None) => { builder }
+            (Some(c), Some(k)) => { builder.with_client_auth_pem_files(c, k)? }
+        };
+    let builder =
+        match args.ca_path {
+            None => { builder }
+            Some (p) => { builder.add_ca_certs_pem_file(p)? }
+        };
+    let tls_connector = builder.build()?;
+
+    let security_config = SecurityConfig::new(tls_connector);
     let mut kafka_client = KafkaClient::new_secure(args.kafka_hosts, security_config);
         kafka_client.load_metadata_all().unwrap();
     let mut kafka_consumer = Consumer::from_client(kafka_client)
